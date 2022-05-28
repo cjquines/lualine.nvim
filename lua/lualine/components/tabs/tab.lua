@@ -31,15 +31,22 @@ function Tab:label()
   local bufnr = buflist[winnr]
   local file = modules.utils.stl_escape(vim.api.nvim_buf_get_name(bufnr))
   local buftype = vim.fn.getbufvar(bufnr, '&buftype')
+  local filetype = vim.fn.getbufvar(bufnr, '&filetype')
   if buftype == 'help' then
     return 'help:' .. vim.fn.fnamemodify(file, ':t:r')
+  elseif buftype == 'quickfix' then
+    return 'quickfix'
+  elseif filetype == 'git' then
+    return 'Git'
+  elseif file:sub(file:len()-2, file:len()) == 'FZF' then
+    return 'FZF'
   elseif buftype == 'terminal' then
     local match = string.match(vim.split(file, ' ')[1], 'term:.*:(%a+)')
     return match ~= nil and match or vim.fn.fnamemodify(vim.env.SHELL, ':t')
   elseif vim.fn.isdirectory(file) == 1 then
-    return vim.fn.fnamemodify(file, ':p:.')
+    return vim.fn.fnamemodify(file, ':t:.') .. '/'
   elseif file == '' then
-    return '[No Name]'
+    return 'untitled'
   end
   return vim.fn.fnamemodify(file, ':t')
 end
@@ -47,12 +54,19 @@ end
 ---returns rendered tab
 ---@return string
 function Tab:render()
+  -- check if modified
+  local buflist = vim.fn.tabpagebuflist(self.tabnr)
+  local winnr = vim.fn.tabpagewinnr(self.tabnr)
+  local bufnr = buflist[winnr]
+  local modified = vim.fn.getbufvar(bufnr, '&modified') == 1
   local name = self:label()
+
   if self.options.fmt then
     name = self.options.fmt(name or '')
   end
   if self.ellipse then -- show elipsis
     name = '...'
+  -- TODO shorten name if too long
   else
     -- different formats for different modes
     if self.options.mode == 0 then
@@ -63,14 +77,16 @@ function Tab:render()
       name = string.format('%s %s', tostring(self.tabnr), name)
     end
   end
+  name = string.format('%s%s', name, modified and ' ●' or '')
   name = Tab.apply_padding(name, self.options.padding)
   self.len = vim.fn.strchars(name)
 
   -- setup for mouse clicks
   local line = string.format('%%%s@LualineSwitchTab@%s%%T', self.tabnr, name)
   -- apply highlight
-  line = modules.highlight.component_format_highlight(self.highlights[(self.current and 'active' or 'inactive')])
-    .. line
+  line = modules.highlight.component_format_highlight(
+    self.highlights[(self.current and (modified and 'modified' or 'active') or 'inactive')]
+  ) .. line
 
   -- apply separators
   if self.options.self.section < 'x' and not self.first then

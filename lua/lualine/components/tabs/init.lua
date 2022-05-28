@@ -10,6 +10,7 @@ local default_options = {
   mode = 0,
   tabs_color = {
     active = nil,
+    modified = nil,
     inactive = nil,
   },
 }
@@ -42,7 +43,8 @@ function M:init(options)
   -- stylua: ignore
   self.highlights = {
     active = self:create_hl( self.options.tabs_color.active, 'active'),
-    inactive = self:create_hl( self.options.tabs_color.inactive, 'inactive'),
+    inactive = self:create_hl( self.options.tabs_color.inactive, 'active'),
+    modified = self:create_hl( self.options.tabs_color.modified, 'active'),
   }
 end
 
